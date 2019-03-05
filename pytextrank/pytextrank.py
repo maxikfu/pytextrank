@@ -198,49 +198,50 @@ def parse_graf (doc_id, graf_text, base_idx, spacy_nlp=None):
 
         if DEBUG:
             print(span)
+        """determining good sentences, starts with Upper case word, ends with period."""
+        if span[0].is_alpha and not span[0].is_upper and span[0].text[0].isupper() and span[-1].is_punct:
+            # build a word list, on which to apply corrections
+            word_list = []
 
-        # build a word list, on which to apply corrections
-        word_list = []
+            for tag_idx in range(span.start, span.end):
+                token = doc[tag_idx]
 
-        for tag_idx in range(span.start, span.end):
-            token = doc[tag_idx]
+                if DEBUG:
+                    print("IDX", tag_idx, token.text, token.tag_, token.pos_)
+                    print("reg", is_not_word(token.text))
 
-            if DEBUG:
-                print("IDX", tag_idx, token.text, token.tag_, token.pos_)
-                print("reg", is_not_word(token.text))
+                word_list.append([token.text, token.lemma_, token.pos_, token.tag_])
 
-            word_list.append([token.text, token.lemma_, token.pos_, token.tag_])
+            # scan the parsed sentence, annotating as a list of `WordNode`
+            corrected_words = fix_microsoft(fix_hypenation(word_list))
 
-        # scan the parsed sentence, annotating as a list of `WordNode`
-        corrected_words = fix_microsoft(fix_hypenation(word_list))
+            for tok_text, tok_lemma, tok_pos, tok_tag in corrected_words:
+                word = WordNode(word_id=0, raw=tok_text, root=tok_text.lower(), pos=tok_tag, keep=0, idx=new_base_idx)
 
-        for tok_text, tok_lemma, tok_pos, tok_tag in corrected_words:
-            word = WordNode(word_id=0, raw=tok_text, root=tok_text.lower(), pos=tok_tag, keep=0, idx=new_base_idx)
+                if is_not_word(tok_text) or (tok_tag == "SYM"):
+                    # a punctuation, or other symbol
+                    pos_family = '.'
+                    word = word._replace(pos=pos_family)
+                else:
+                    pos_family = tok_tag.lower()[0]
 
-            if is_not_word(tok_text) or (tok_tag == "SYM"):
-                # a punctuation, or other symbol
-                pos_family = '.'
-                word = word._replace(pos=pos_family)
-            else:
-                pos_family = tok_tag.lower()[0]
+                if pos_family in POS_LEMMA:
+                    # can lemmatize this word?
+                    word = word._replace(root=tok_lemma)
 
-            if pos_family in POS_LEMMA:
-                # can lemmatize this word?
-                word = word._replace(root=tok_lemma)
+                if pos_family in POS_KEEPS:
+                    word = word._replace(word_id=get_word_id(word.root), keep=1)
 
-            if pos_family in POS_KEEPS:
-                word = word._replace(word_id=get_word_id(word.root), keep=1)
+                digest.update(word.root.encode('utf-8'))
 
-            digest.update(word.root.encode('utf-8'))
+                # schema: word_id, raw, root, pos, keep, idx
+                if DEBUG:
+                    print(word)
 
-            # schema: word_id, raw, root, pos, keep, idx
-            if DEBUG:
-                print(word)
+                graf.append(list(word))
+                new_base_idx += 1
 
-            graf.append(list(word))
-            new_base_idx += 1
-
-        markup.append(ParsedGraf(id=doc_id, sha1=digest.hexdigest(), graf=graf))
+            markup.append(ParsedGraf(id=doc_id, sha1=digest.hexdigest(), graf=graf))
 
     return markup, new_base_idx
 
