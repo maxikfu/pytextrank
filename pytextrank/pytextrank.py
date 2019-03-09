@@ -556,7 +556,7 @@ def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner
     # set up the spaCy NLP parser
     if not spacy_nlp:
         if not SPACY_NLP:
-            SPACY_NLP = spacy.load("en")
+            SPACY_NLP = spacy.load("en_core_web_sm")
 
         spacy_nlp = SPACY_NLP
 
