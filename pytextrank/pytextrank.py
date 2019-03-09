@@ -734,7 +734,7 @@ def limit_keyphrases (path, phrase_limit=20):
             yield rl.text.replace(" - ", "-")
 
 
-def limit_sentences (path, word_limit=100):
+def limit_sentences (path, word_limit=500):
     """
     iterator for the most significant sentences, up to a specified limit
     """
